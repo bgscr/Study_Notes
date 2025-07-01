@@ -72,3 +72,91 @@
             p.Age = age
         }        
 
+## 常量和枚举
+
+    const a int = 1 //基础定义
+    //定义多个
+    const (
+        h    byte = 3
+        i         = "value"
+        j, k      = "v", 4
+        l, m      = 5, false
+    )
+
+    //枚举
+    type Weekday int
+    const (
+        Sunday Weekday = iota // 0
+        Monday                // 1
+        Tuesday               // 2
+    )
+    
+    //_ 跳值
+    const (
+        A = iota // 0
+        _        // 跳过，iota=1
+        B        // 2
+    )
+
+    // 位掩码（左移操作）
+    const (
+        FlagUp = 1 << iota // 1<<0=1
+        FlagBroadcast      // 1<<1=2
+    )
+
+    // 数学表达式（如数量级定义）
+    const (
+        KB = 1 << (10 * iota) // 1<<10=1024
+        MB                    // 1<<20
+    )
+
+    // 多常量同行声明
+    const (
+        A, B = iota, iota+1 // A=0, B=1
+        C, D                // C=1, D=2
+    )
+
+    // 插值与重置
+    const (
+        A = 100        // iota=0（但显式赋值为100）
+        B = iota       // iota=1 → B=1
+        C              // iota=2 → C=2
+    )
+
+    const (
+        A = iota       // 0
+        B = "test"     // iota=1（但显式赋值）
+        C = iota       // iota=2 → C=2
+    )
+
+## channel
+    先进先出（FIFO）
+    ch := make(chan int)      // 无缓冲通道（同步模式）
+    chBuf := make(chan int, 3) // 有缓冲通道（异步模式，容量3）
+
+发送阻塞：无缓冲通道需双方就绪，否则阻塞；有缓冲通道在缓冲区满时阻塞。
+接收阻塞：无数据时阻塞，接收已关闭通道返回零值（通过v, ok := <-ch判断关闭状态）。
+关闭通道：close(ch)，关闭后发送会panic，接收仍可取剩余数据
+
+    // 无缓冲通道导致死锁（未配对）
+    ch := make(chan int)
+    ch <- 1 // 阻塞直到接收端就绪，若无接收者则deadlock
+
+    // 有缓冲通道允许短暂异步
+    ch := make(chan int, 3)
+    ch <- 1; ch <- 2 // 不阻塞，缓冲区未满
+
+## sync包
+    互斥锁（Mutex）
+    var mutex sync.Mutex
+    mutex.Lock()   // 加锁
+    defer mutex.Unlock() // 解锁
+    // 临界区代码
+
+    WaitGroup
+    var wg sync.WaitGroup
+    wg.Add(3)       // 添加3个任务
+    go func() {
+        defer wg.Done() // 任务完成，计数器-1
+    }()
+    wg.Wait()       // 阻塞直到计数器归零
