@@ -7,7 +7,7 @@
 | 执行顺序   | （复杂）同一文件中的 init 按代码顺序从上到下执行。<br/>同一包不同文件按文件名字符串顺序（字典序）执行。<br/>不同包的 init 按导入依赖关系执行：先被依赖的包先执行，无依赖时按 import 的逆序执行  | init执行完执行     |
 
 
-    指针
+## 指针
 定义方式：
     
     //定义变量i,指针p1,p1接受i的内存地址
@@ -33,3 +33,42 @@
 
     c := (*uint8)(unsafe.Pointer(upA))
     fmt.Println(*c)
+
+## 结构体struct
+#### 用于聚合多个不同类型字段的数据结构，Go当中没有类的概念
+#### 首字母大写的字段或方法可在包外访问，否则仅限包内
+
+语法：
+
+        type 结构体名 struct {
+            field1 int
+            Person  // 匿名字段（继承Person字段）
+            // ...
+        }
+
+实例化方式:
+
+        p := Person{Name: "Alice", Age: 25} 
+        p := new(Person)  // *Person 指针类型
+        user := struct{Name string; Age int}{Nzame: "Bob"}//匿名结构
+
+标签：
+        
+        //用作序列化
+        type User struct {
+            Name string `json:"name"`
+            Age  int    `json:"age"`
+        }
+
+结构体方法：
+
+        // 值接收者（操作副本）
+        func (p Person) GetName() string {
+            return p.Name
+        }
+
+        // 指针接收者（操作实际对象）
+        func (p *Person) SetAge(age int) {
+            p.Age = age
+        }        
+
