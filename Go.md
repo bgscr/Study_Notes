@@ -135,7 +135,9 @@
     chBuf := make(chan int, 3) // 有缓冲通道（异步模式，容量3）
 
 发送阻塞：无缓冲通道需双方就绪，否则阻塞；有缓冲通道在缓冲区满时阻塞。
+
 接收阻塞：无数据时阻塞，接收已关闭通道返回零值（通过v, ok := <-ch判断关闭状态）。
+
 关闭通道：close(ch)，关闭后发送会panic，接收仍可取剩余数据
 
     // 无缓冲通道导致死锁（未配对）
@@ -145,6 +147,14 @@
     // 有缓冲通道允许短暂异步
     ch := make(chan int, 3)
     ch <- 1; ch <- 2 // 不阻塞，缓冲区未满
+
+参数限制仅发送或仅接受
+
+    //仅发送数据
+    func <method_name>(<channel_name> chan <- <type>)
+
+    //仅接收数据
+    func <method_name>(<channel_name> <-chan <type>)
 
 ## sync包
     互斥锁（Mutex）
