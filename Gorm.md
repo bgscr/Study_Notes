@@ -57,3 +57,63 @@
 
 [更多标签应用](https://gorm.io/zh_CN/docs/models.html#%E5%AD%97%E6%AE%B5%E6%A0%87%E7%AD%BE)
 
+# CRUD操作
+### 插入
+    // 单条插入
+    user := User{Name: "Alice", Age: 25}
+    result := db.Create(&user)         // 同步插入
+    fmt.Println(user.ID)               // 获取自增ID
+    fmt.Println(result.Error)          // 错误检查
+
+    // 批量插入
+    users := []User{{Name: "Bob"}, {Name: "Charlie"}}
+    db.CreateInBatches(users, 100)     // 每批100条
+
+### 查询
+    // 基础查询
+    var user User
+    db.First(&user)        // 按主键排序第一条
+    db.Take(&user)         // 随机一条
+    db.Last(&user)         // 按主键最后一条
+
+    // 条件查询
+    db.Where("age > ?", 20).Find(&users)                   // 条件查询
+    db.Where(&User{Name: "Alice", Age: 25}).First(&user)   // 结构体条件（忽略零值）
+    db.Where("name LIKE ?", "%Ali%").Find(&users)          // 模糊查询
+
+    // 预加载关联（假设User有Orders关联）
+    db.Preload("Orders").Find(&users)
+
+    // 错误处理
+    if err := db.First(&user, 999).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+        fmt.Println("记录不存在")
+    }
+
+### 更新
+    // 更新单个字段
+    db.Model(&User{}).Where("id = ?", 1).Update("name", "Alice Updated")
+
+    // 更新多个字段（忽略零值）
+    db.Model(&user).Updates(User{Name: "Alice", Age: 26})
+
+    // 选择字段更新
+    db.Model(&user).Select("Name").Updates(User{Name: "Bob", Age: 30}) // 仅更新Name
+    db.Model(&user).Omit("Age").Updates(User{Name: "Bob", Age: 30})    // 排除Age
+
+### 删除
+    // 软删除（需模型包含DeletedAt字段）
+    db.Delete(&user)       // UPDATE users SET deleted_at = NOW() WHERE id = ?
+
+    // 物理删除
+    db.Unscoped().Delete(&user)  // DELETE FROM users WHERE id = ?
+
+### 事务
+    tx := db.Begin()
+    if err := tx.Create(&user).Error; err != nil {
+        tx.Rollback()
+    }
+    tx.Commit()
+
+
+### 调试SQL
+    调试 SQL：通过 db.Debug() 查看生成的 SQL 语句。
