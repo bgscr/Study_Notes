@@ -117,3 +117,59 @@
 
 ### 调试SQL
     调试 SQL：通过 db.Debug() 查看生成的 SQL 语句。
+
+# 关联
+### BelongsTo
+    type Dog struct {
+        gorm.Model
+        BeautyID uint   // 外键
+        Beauty   Beauty // 所属模型
+    }
+    type Beauty struct {
+        gorm.Model
+    }
+
+### HasOne
+    type User struct {
+        gorm.Model
+        Profile Profile
+    }
+    type Profile struct {
+        UserID uint // 外键
+    }
+
+### HasMany
+    type User struct {
+        gorm.Model
+        Orders []Order
+    }
+    type Order struct {
+        UserID uint // 外键
+    }
+
+### ManyToMany 通过中间表处理多对多关系。
+    type User struct {
+        Languages []Language `gorm:"many2many:user_languages;"`
+    }
+    type Language struct {
+        Name string
+    }
+
+### Preload
+    var user User
+    db.Preload("Orders").First(&user, 1)      // 预加载所有订单
+    db.Preload("Orders", "state = ?", "paid").First(&user, 1) // 条件筛选
+
+### 动态关联Association
+
+    // 添加关联
+    db.Model(&user).Association("Languages").Append(&Language{Name: "Go"})
+
+    // 替换关联
+    db.Model(&user).Association("Languages").Replace([]Language{{Name: "Python"}})
+
+    // 删除关联
+    db.Model(&user).Association("Languages").Delete(&Language{Name: "Java"})
+
+    // 清空关联
+    db.Model(&user).Association("Languages").Clear()
