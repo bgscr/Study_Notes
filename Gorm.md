@@ -173,3 +173,52 @@
 
     // 清空关联
     db.Model(&user).Association("Languages").Clear()
+
+### 多态关联Polymorphism
+    // Comment 模型（多态关联的从表）
+    type Comment struct {
+        ID        uint   `gorm:"primaryKey"`
+        Content   string
+        TargetType string `gorm:"column:target_type"` // 通过 polymorphicType 自定义类型字段名
+        TargetID   uint   `gorm:"column:target_id"`   // 通过 polymorphicId 自定义ID字段名
+    }
+
+    // Article 模型（主表）
+    type Article struct {
+        ID       uint   `gorm:"primaryKey"`
+        Title    string
+        Comments []Comment `gorm:"polymorphic:Owner; polymorphicType:TargetType; polymorphicId:TargetID; polymorphicValue:blog_post"`
+    }
+
+    // Video 模型（主表）
+    type Video struct {
+        ID       uint   `gorm:"primaryKey"`
+        Title    string
+        Comments []Comment `gorm:"polymorphic:Owner; polymorphicType:TargetType; polymorphicId:TargetID; polymorphicValue:video_clip"`
+    }
+
+    // 创建文章及其评论
+    article := Article{
+        Title: "GORM 多态关联指南",
+        Comments: []Comment{
+            {Content: "非常实用的教程！"},
+            {Content: "期待更多案例！"},
+        },
+    }
+    db.Create(&article)
+
+    // 创建视频及其评论
+    video := Video{
+        Title: "Go 实战演示",
+        Comments: []Comment{
+            {Content: "讲解清晰！"},
+        },
+    }
+    db.Create(&video)
+
+    //实际数据
+    ID	Content	TargetType	TargetID
+    1	非常实用的教程！	blog_post	1
+    2	期待更多案例！	blog_post	1
+    3	讲解清晰！	video_clip	1
+    
