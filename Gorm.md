@@ -1,4 +1,8 @@
 # 连接数据库
+### 安装
+    go get -u gorm.io/gorm
+    go get -u gorm.io/driver/sqlite
+    go get -u gorm.io/driver/mysql
 ### 方法一
     import (
     "gorm.io/driver/mysql"
