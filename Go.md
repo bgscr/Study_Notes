@@ -171,3 +171,10 @@
     }()
     wg.Wait()       // 阻塞直到计数器归零
 
+# 第二周
+## 不要通过共享内存来通信，而应该通过通信来共享内存
+- [shareMemoryByCommunicating](https://github.com/bgscr/Study_Notes/blob/main/homework-task/task4/shareMemoryByCommunicating/main.go)
+- [shareMemoryByCommunicatingV2](https://github.com/bgscr/Study_Notes/blob/main/homework-task/task4/shareMemoryByCommunicatingV2/main.go)
+
+    
+    
