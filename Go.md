@@ -171,10 +171,224 @@
     }()
     wg.Wait()       // 阻塞直到计数器归零
 
-# 第二周
+# [第二周](#SecondWeek)
 ## 不要通过共享内存来通信，而应该通过通信来共享内存
 - [shareMemoryByCommunicating](https://github.com/bgscr/Study_Notes/blob/main/homework-task/task4/shareMemoryByCommunicating/main.go)
 - [shareMemoryByCommunicatingV2](https://github.com/bgscr/Study_Notes/blob/main/homework-task/task4/shareMemoryByCommunicatingV2/main.go)
 
+
+# 指针
+    pointer methods，使用指针 作为方法接收者，则必须通过 指针 调用此方法。
+    value methods，使用值 作为方法接收者，则既能通过 值 也能通过指针调用此方法。
+
+    这有个例外情况。当 value 是addressable的，golang编译器会自动将通过 值 调用pointer methods的代码转换成通过 指针 调用。
+
+    简单理解为，常量无法寻址，但变量肯定会存储在内存某个地方，可以被寻址
+
+    下面的值不能被寻址(addresses):
+    bytes in strings：字符串中的字节
+    map elements：map中的元素
+    dynamic values of interface values (exposed by type assertions)：接口的动态值
+    constant values：常量
+    literal values：字面值
+    package level functions：包级别的函数
+    methods (used as function values)：方法
+    intermediate values：中间值
+    function callings
+    explicit value conversions
+    all sorts of operations, except pointer dereference operations, but including:
+    channel receive operations
+    sub-string operations
+    sub-slice operations
+    addition, subtraction, multiplication, and division, etc.
+    注意， &T{}相当于tmp := T{}; (&tmp)的语法糖，所以&T{}可合法不意味着T{}可寻址。
+    下面的值可以寻址:
+    variables
+    fields of addressable structs
+    elements of addressable arrays
+    elements of any slices (whether the slices are addressable or not)
+    pointer dereference operations
+ 
+# 下划线:_  ,blank identifier的使用技巧
+	var _ json.Marshaler = (*RawMessage)(nil)
+	在此声明中，我们调用了一个 *RawMessage 转换并将其赋予了 Marshaler，以此来要求 *RawMessage 实现 Marshaler，这时其属性就会在编译时被检测。 若 json.Marshaler 接口被更改，此包将无法通过编译， 而我们则会注意到它需要更新
+
+
+
+# select原理
+	编译器会对select有不同的case的情况进行优化以提高性能。首先，编译器对select没有case、有单case和单case+default的情况进行单独处理，这些处理或者直接调用运行时函数，或者直接转成对channel的操作，或者以非阻塞的方式访问channel，多种灵活的处理方式能够提高性能，尤其是避免对channel的加锁。
+
+	对最常出现的select有多case的情况，会调用runtime.selectgo()函数来获取执行case的索引，并生成 if 语句执行该case的代码。
+
+	selectgo函数的执行分为四个步骤：
+        首先，随机生成一个遍历case的轮询顺序 pollorder 并根据 channel 地址生成加锁顺序 lockorder，随机顺序能够避免channel饥饿，保证公平性，加锁顺序能够避免死锁和重复加锁；
+        然后，根据 pollorder 的顺序查找 scases 是否有可以立即收发的channel，如果有则获取case索引进行处理；
+        再次，如果pollorder顺序上没有可以直接处理的case，则将当前 goroutine 加入各 case 的 channel 对应的收发队列上并等待其他 goroutine 的唤醒；
+        最后，当调度器唤醒当前 goroutine 时，会再次按照 lockorder 遍历所有的case，从中查找需要被处理的case索引进行读写处理，同时从所有case的发送接收队列中移除掉当前goroutine。
+
+
+# vet
+	使用该工具检查语法或规范问题
+
+
+# sync
+	第一次使用后不能复制的，noCopy，使用go vet监测出现复制锁的情况
+	// noCopy may be added to structs which must not be copied
+	// after the first use.
+	//
+	// See https://golang.org/issues/8005#issuecomment-190753527
+	// for details.
+	//
+	// Note that it must not be embedded, due to the Lock and Unlock methods.
+	type noCopy struct{}
+
+	// Lock is a no-op used by -copylocks checker from `go vet`.
+	func (*noCopy) Lock()   {}
+	func (*noCopy) Unlock() {}
+
+# Mutex   
     
-    
+	// A Mutex is a mutual exclusion lock.
+	//
+	// See package [sync.Mutex] documentation.
+	type Mutex struct {
+		state int32
+		sema  uint32
+	}
+
+	state int32 不同位分别表示了不同的状态：
+	mutexLocked — 表示互斥锁的锁定状态；
+	mutexWoken — 表示从正常模式被从唤醒；
+	mutexStarving — 当前的互斥锁进入饥饿状态；
+	waitersCount — 当前互斥锁上等待的 Goroutine 个数
+
+## 先判断能否进入自旋锁，进入自旋锁的条件：	
+	old&(mutexLocked|mutexStarving) == mutexLocked && runtime_canSpin(iter)
+	非饥饿并且已锁状态，runtime_canSpin(多 CPU 、当前 Goroutine 为了获取该锁进入自旋的次数小于四次、当前机器上至少存在一个正在运行的处理器 P 并且处理的运行队列为空)
+
+## 没有进入自旋锁时的操作
+	new := old
+		// Don't try to acquire starving mutex, new arriving goroutines must queue.
+		//非饥饿模式则变成锁的状态
+		if old&mutexStarving == 0 {
+			new |= mutexLocked
+		}
+		//如果是锁的状态或者饥饿的状态时，排队数量+1
+		if old&(mutexLocked|mutexStarving) != 0 {
+			new += 1 << mutexWaiterShift
+		}
+		// The current goroutine switches mutex to starvation mode.
+		// But if the mutex is currently unlocked, don't do the switch.
+		// Unlock expects that starving mutex has waiters, which will not
+		// be true in this case.
+		//更新饥饿模式
+		if starving && old&mutexLocked != 0 {
+			new |= mutexStarving
+		}
+		//唤醒状态
+		if awoke {
+			// The goroutine has been woken from sleep,
+			// so we need to reset the flag in either case.
+			if new&mutexWoken == 0 {
+				throw("sync: inconsistent mutex state")
+			}
+			new &^= mutexWoken
+		}
+
+
+## 获取锁
+	如果没有通过 CAS 获得锁，会调用 runtime.sync_runtime_SemacquireMutex 通过信号量保证资源不会被两个 Goroutine 获取。
+
+	runtime.sync_runtime_SemacquireMutex 会在方法中不断尝试获取锁并陷入休眠等待信号量的释放，一旦当前 Goroutine 可以获取信号量，它就会立刻返回，sync.Mutex.Lock的剩余代码也会继续执行。
+
+	在正常模式下，这段代码会设置唤醒和饥饿标记、重置迭代次数并重新执行获取锁的循环；
+	在饥饿模式下，当前 Goroutine 会获得互斥锁，如果等待队列中只存在当前 Goroutine，互斥锁还会从饥饿模式中退出；
+
+	if atomic.CompareAndSwapInt32(&m.state, old, new) {
+	    if old&(mutexLocked|mutexStarving) == 0 {
+	        break // locked the mutex with CAS
+	    }
+	    queueLifo := waitStartTime != 0
+	    if waitStartTime == 0 {
+	        waitStartTime = runtime_nanotime()
+	    }
+
+	    runtime_SemacquireMutex(&m.sema, queueLifo, 1)
+	    // 如果等待时间超过 1ms 则切换到饥饿模式
+	    starving = starving || runtime_nanotime()-waitStartTime > starvationThresholdNs
+	    old = m.state
+	    if old&mutexStarving != 0 {
+	        if old&(mutexLocked|mutexWoken) != 0 || old>>mutexWaiterShift == 0 {
+	            throw("sync: inconsistent mutex state")
+	        }
+	        delta := int32(mutexLocked - 1<<mutexWaiterShift)
+	        if !starving || old>>mutexWaiterShift == 1 {
+	            delta -= mutexStarving
+	        }
+	        atomic.AddInt32(&m.state, delta)
+	        break
+	    }
+	    awoke = true
+	    iter = 0
+	} else {
+	    old = m.state
+	}
+
+
+
+## 解锁
+	该过程会先使用atomic.AddInt32函数快速解锁，这时会发生下面的两种情况：
+	如果该函数返回的新状态等于 0，当前 Goroutine 就成功解锁了互斥锁；
+	如果该函数返回的新状态不等于 0，则进入 Slow path。
+	func (m *Mutex) Unlock() {
+		// Fast path: drop lock bit.
+		new := atomic.AddInt32(&m.state, -mutexLocked)
+		if new != 0 {
+			// Outlined slow path to allow inlining the fast path.
+			// To hide unlockSlow during tracing we skip one extra frame when tracing GoUnblock.
+			m.unlockSlow(new)
+		}
+	}
+
+
+	先校验锁状态的合法性 — 如果当前互斥锁已经被解锁过了会直接抛出异常 “sync: unlock of unlocked mutex” 中止当前程序。
+	在正常模式下，上述代码会使用如下所示的处理过程：
+
+		如果互斥锁不存在等待者或者互斥锁的 mutexLocked、mutexStarving、mutexWoken 状态不都为 0，那么当前方法可以直接返回，不需要唤醒其他等待者；
+		如果互斥锁存在等待者，会通过runtime_Semrelease唤醒等待者并移交锁的所有权；
+
+	在饥饿模式下，上述代码会直接调用runtime_Semrelease将当前锁交给下一个正在尝试获取锁的等待者，等待者被唤醒后会得到锁，在这时互斥锁还不会退出饥饿状态；
+	func (m *Mutex) unlockSlow(new int32) {
+	   if (new+mutexLocked)&mutexLocked == 0 {
+	      throw("sync: unlock of unlocked mutex")
+	   }
+	   if new&mutexStarving == 0 {
+	      old := new
+	      for {
+	         if old>>mutexWaiterShift == 0 || old&(mutexLocked|mutexWoken|mutexStarving) != 0 {
+	            return
+	         }
+	         new = (old - 1<<mutexWaiterShift) | mutexWoken
+	         if atomic.CompareAndSwapInt32(&m.state, old, new) {
+	            runtime_Semrelease(&m.sema, false, 1)
+	            return
+	         }
+	         old = m.state
+	      }
+	   } else {
+	      runtime_Semrelease(&m.sema, true, 1)
+	   }
+	}
+
+	互斥锁的加锁，它涉及自旋、信号量以及调度等概念：
+
+	如果互斥锁处于初始化状态，会通过置位 mutexLocked 加锁；
+	如果互斥锁处于 mutexLocked 状态并且在普通模式下工作，会进入自旋，执行 30 次 PAUSE 指令消耗 CPU 时间等待锁的释放；
+	如果当前 Goroutine 等待锁的时间超过了 1ms，互斥锁就会切换到饥饿模式；
+	互斥锁在正常情况下会通过sync_runtime_SemacquireMutex将尝试获取锁的 Goroutine 切换至休眠状态，等待锁的持有者唤醒；
+	如果当前 Goroutine 是互斥锁上的最后一个等待的协程或者等待的时间小于 1ms，那么它会将互斥锁切换回正常模式；
+
+	互斥锁的解锁过程：
+	当互斥锁已经被解锁时，调用 Mutex.Lock 会直接抛出异常；
+	当互斥锁处于饥饿模式时，将锁的所有权交给队列中的下一个等待者，等待者会负责设置 mutexLocked 标志位；
+	当互斥锁处于普通模式时，如果没有 Goroutine 等待锁的释放或者已经有被唤醒的 Goroutine 获得了锁，会直接返回；在其他情况下会通过sync.runtime_Semrelease 唤醒对应的 Goroutine；
