@@ -177,7 +177,7 @@
 - [shareMemoryByCommunicatingV2](https://github.com/bgscr/Study_Notes/blob/main/homework-task/task4/shareMemoryByCommunicatingV2/main.go)
 
 
-# 指针
+## 指针
     pointer methods，使用指针 作为方法接收者，则必须通过 指针 调用此方法。
     value methods，使用值 作为方法接收者，则既能通过 值 也能通过指针调用此方法。
 
@@ -209,13 +209,13 @@
     elements of any slices (whether the slices are addressable or not)
     pointer dereference operations
  
-# 下划线:_  ,blank identifier的使用技巧
+## 下划线:_  ,blank identifier的使用技巧
 	var _ json.Marshaler = (*RawMessage)(nil)
 	在此声明中，我们调用了一个 *RawMessage 转换并将其赋予了 Marshaler，以此来要求 *RawMessage 实现 Marshaler，这时其属性就会在编译时被检测。 若 json.Marshaler 接口被更改，此包将无法通过编译， 而我们则会注意到它需要更新
 
 
 
-# select原理
+## select原理
 	编译器会对select有不同的case的情况进行优化以提高性能。首先，编译器对select没有case、有单case和单case+default的情况进行单独处理，这些处理或者直接调用运行时函数，或者直接转成对channel的操作，或者以非阻塞的方式访问channel，多种灵活的处理方式能够提高性能，尤其是避免对channel的加锁。
 
 	对最常出现的select有多case的情况，会调用runtime.selectgo()函数来获取执行case的索引，并生成 if 语句执行该case的代码。
@@ -227,11 +227,11 @@
         最后，当调度器唤醒当前 goroutine 时，会再次按照 lockorder 遍历所有的case，从中查找需要被处理的case索引进行读写处理，同时从所有case的发送接收队列中移除掉当前goroutine。
 
 
-# vet
+## vet
 	使用该工具检查语法或规范问题
 
 
-# sync
+## sync
 	第一次使用后不能复制的，noCopy，使用go vet监测出现复制锁的情况
 	// noCopy may be added to structs which must not be copied
 	// after the first use.
@@ -246,7 +246,15 @@
 	func (*noCopy) Lock()   {}
 	func (*noCopy) Unlock() {}
 
-# Mutex   
+### fast-path 和 slow-path
+    fast-path：一段针对常见操作或最佳情况进行优化的代码路径。在这条路径上，通常执行步骤最少、效率最高。所以 fast path 通常在设计上避免了昂贵的操作（如加锁、IO 操作等）以提高性能。
+
+    slow-path：用于处理较为罕见或复杂的情况，通常执行步骤较多、性能较低。这类路径通常在少数情况下才会被执行，比如当代码需要处理边缘情况或复杂的操作时。
+
+    slow-path 分离出来，单独定义一个函数，目的是为了对 fast-path 进行内联优化。
+    将 slow-path 逻辑放在单独的 doSlow 函数中可以使 Do 方法的快路径更简洁，这样还有助于 Go 编译器对 fast-path 进行内联优化（即直接嵌入到调用处），从而减少函数调用的开销，提高性能。
+
+### Mutex   
     
 	// A Mutex is a mutual exclusion lock.
 	//
@@ -262,11 +270,11 @@
 	mutexStarving — 当前的互斥锁进入饥饿状态；
 	waitersCount — 当前互斥锁上等待的 Goroutine 个数
 
-## 先判断能否进入自旋锁，进入自旋锁的条件：	
+### 先判断能否进入自旋锁，进入自旋锁的条件：	
 	old&(mutexLocked|mutexStarving) == mutexLocked && runtime_canSpin(iter)
 	非饥饿并且已锁状态，runtime_canSpin(多 CPU 、当前 Goroutine 为了获取该锁进入自旋的次数小于四次、当前机器上至少存在一个正在运行的处理器 P 并且处理的运行队列为空)
 
-## 没有进入自旋锁时的操作
+### 没有进入自旋锁时的操作
 	new := old
 		// Don't try to acquire starving mutex, new arriving goroutines must queue.
 		//非饥饿模式则变成锁的状态
@@ -296,7 +304,7 @@
 		}
 
 
-## 获取锁
+### 获取锁
 	如果没有通过 CAS 获得锁，会调用 runtime.sync_runtime_SemacquireMutex 通过信号量保证资源不会被两个 Goroutine 获取。
 
 	runtime.sync_runtime_SemacquireMutex 会在方法中不断尝试获取锁并陷入休眠等待信号量的释放，一旦当前 Goroutine 可以获取信号量，它就会立刻返回，sync.Mutex.Lock的剩余代码也会继续执行。
@@ -336,7 +344,7 @@
 
 
 
-## 解锁
+### 解锁
 	该过程会先使用atomic.AddInt32函数快速解锁，这时会发生下面的两种情况：
 	如果该函数返回的新状态等于 0，当前 Goroutine 就成功解锁了互斥锁；
 	如果该函数返回的新状态不等于 0，则进入 Slow path。
@@ -392,3 +400,225 @@
 	当互斥锁已经被解锁时，调用 Mutex.Lock 会直接抛出异常；
 	当互斥锁处于饥饿模式时，将锁的所有权交给队列中的下一个等待者，等待者会负责设置 mutexLocked 标志位；
 	当互斥锁处于普通模式时，如果没有 Goroutine 等待锁的释放或者已经有被唤醒的 Goroutine 获得了锁，会直接返回；在其他情况下会通过sync.runtime_Semrelease 唤醒对应的 Goroutine；
+
+### Once
+
+    //第一个字段与结构体本身的指针地址是相同的，访问 Once 结构体无需指针偏移操作，就可以直接操作 done 属性
+    type Once struct {
+        _ noCopy
+
+        // done indicates whether the action has been performed.
+        // It is first in the struct because it is used in the hot path.
+        // The hot path is inlined at every call site.
+        // Placing done first allows more compact instructions on some architectures (amd64/386),
+        // and fewer instructions (to calculate offset) on other architectures.
+        done atomic.Uint32
+        m    Mutex
+    }
+
+    //为了能够确保f已经执行完成之后，才通知其他goroutine不用再次执行，所以采用原子操作和互斥锁方法。
+    func (o *Once) Do(f func()) {
+        // Note: Here is an incorrect implementation of Do:
+        //
+        //	if o.done.CompareAndSwap(0, 1) {
+        //		f()
+        //	}
+        //
+        // Do guarantees that when it returns, f has finished.
+        // This implementation would not implement that guarantee:
+        // given two simultaneous calls, the winner of the cas would
+        // call f, and the second would return immediately, without
+        // waiting for the first's call to f to complete.
+        // This is why the slow path falls back to a mutex, and why
+        // the o.done.Store must be delayed until after f returns.
+
+        if o.done.Load() == 0 {
+            // Outlined slow-path to allow inlining of the fast-path.
+            o.doSlow(f)
+        }
+    }
+
+    func (o *Once) doSlow(f func()) {
+        o.m.Lock()
+        defer o.m.Unlock()
+        if o.done.Load() == 0 {
+            defer o.done.Store(1)
+            f()
+        }
+    }
+
+### OnceFunc 如果抛出异常每次调用都是相同的异常，Once.Do只会有一次异常
+    // OnceFunc returns a function that invokes f only once. The returned function
+    // may be called concurrently.
+    //
+    // If f panics, the returned function will panic with the same value on every call.
+    func OnceFunc(f func()) func() {
+        var (
+            once  Once
+            valid bool
+            p     any
+        )
+        // Construct the inner closure just once to reduce costs on the fast path.
+        g := func() {
+            defer func() {
+                p = recover()
+                if !valid {
+                    // Re-panic immediately so on the first call the user gets a
+                    // complete stack trace into f.
+                    panic(p)
+                }
+            }()
+            f()
+            f = nil      // Do not keep f alive after invoking it.
+            valid = true // Set only if f does not panic.
+        }
+        return func() {
+            once.Do(g)
+            if !valid {
+                panic(p)
+            }
+        }
+    }
+
+### OnceValue 在OnceFunc的基础上有返回值
+    // OnceValue returns a function that invokes f only once and returns the value
+    // returned by f. The returned function may be called concurrently.
+    //
+    // If f panics, the returned function will panic with the same value on every call.
+    func OnceValue[T any](f func() T) func() T {
+        var (
+            once   Once
+            valid  bool
+            p      any
+            result T
+        )
+        g := func() {
+            defer func() {
+                p = recover()
+                if !valid {
+                    panic(p)
+                }
+            }()
+            result = f()
+            f = nil
+            valid = true
+        }
+        return func() T {
+            once.Do(g)
+            if !valid {
+                panic(p)
+            }
+            return result
+        }
+    }
+### sync.OnceValues 在sync.OnceValue的基础上返回两个返回值
+    // OnceValues returns a function that invokes f only once and returns the values
+    // returned by f. The returned function may be called concurrently.
+    //
+    // If f panics, the returned function will panic with the same value on every call.
+    func OnceValues[T1, T2 any](f func() (T1, T2)) func() (T1, T2) {
+        var (
+            once  Once
+            valid bool
+            p     any
+            r1    T1
+            r2    T2
+        )
+        g := func() {
+            defer func() {
+                p = recover()
+                if !valid {
+                    panic(p)
+                }
+            }()
+            r1, r2 = f()
+            f = nil
+            valid = true
+        }
+        return func() (T1, T2) {
+            once.Do(g)
+            if !valid {
+                panic(p)
+            }
+            return r1, r2
+        }
+    }
+
+### sync.Map
+    type Map struct {
+        mu    sync.Mutex        // 保护dirty的互斥锁
+        read  atomic.Pointer[readOnly] // 原子操作的只读map
+        dirty map[any]*entry    // 全量数据，操作需加锁
+        misses int              // read未命中次数，触发dirty提升
+    }
+
+    type readOnly struct {
+        m       map[any]*entry  // 只读数据
+        amended bool            // 标记dirty存在read未包含的键
+    }
+
+    /*
+    entry的指针p有三种状态：
+    nil：已标记删除，但尚未同步到dirty。
+    expunged：已从dirty中删除，不可恢复。
+    正常值：有效数据
+    */
+    type entry struct {
+        p atomic.Pointer[any]   // 原子操作的value指针，支持状态标记
+    }
+
+    read：原子操作的无锁map，支持高并发读。
+    dirty：含全量数据，操作需加锁。当misses达到阈值（len(dirty)）时，dirty会替换为新的read
+
+    进行删除的时候会现将extry的p设为nil
+    LoadOrStore和Store，如果read和dirty没有key时，并且misses次数达到dirty的数量时，将重构dirty，此时会将nil状态的extry的p设置为expunged
+    
+    重构read的时候会跳过nil和expunged的值
+
+#### Swap方法，Store实际调用的方法
+    func (m *Map) Swap(key, value any) (previous any, loaded bool) {
+        // 先尝试从 read map 获取 key 对应的 entry
+        read := m.loadReadOnly()
+        if e, ok := read.m[key]; ok { // 如果 key 存在
+            // 尝试交换值
+            if v, ok := e.trySwap(&value); ok { // 如果交换成功
+                if v == nil { // 说明已被删除，但没有彻底删除（expunged）
+                    return nil, false // 新增键值对成功
+                }
+                return *v, true // 交换成功
+            }
+        }
+
+        // 未找到或需要修改 dirty map，需要加锁处理
+        m.mu.Lock()
+        read = m.loadReadOnly()
+        if e, ok := read.m[key]; ok { // 如果 key 在 read map 中
+            if e.unexpungeLocked() {
+                // 如果 entry 之前被 expunged，意味着 dirty map 不为 nil 且该 entry 不在 dirty map 中
+                m.dirty[key] = e
+            }
+            // 进行值交换
+            if v := e.swapLocked(&value); v != nil {
+                loaded = true
+                previous = *v
+            }
+        } else if e, ok := m.dirty[key]; ok { // 如果 key 在 dirty map 中
+            // 进行值交换
+            if v := e.swapLocked(&value); v != nil {
+                loaded = true
+                previous = *v
+            }
+        } else { // key 即不在 read map 中，也不在 dirty map 中
+            if !read.amended {
+                // 添加第一个新 key 到 dirty map，需要先标记 read map 为不完整
+                m.dirtyLocked()
+                m.read.Store(&readOnly{m: read.m, amended: true})
+            }
+            // 在 dirty map 中创建新 entry
+            m.dirty[key] = newEntry(value)
+        }
+        m.mu.Unlock()
+        return previous, loaded
+    }
+
+
