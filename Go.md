@@ -622,3 +622,192 @@
     }
 
 
+### singleflight
+    // call is an in-flight or completed singleflight.Do call
+    type call struct {
+        wg sync.WaitGroup // in-flight 并发控制
+
+        // These fields are written once before the WaitGroup is done
+        // and are only read after the WaitGroup is done.
+        val interface{} // 记录 fn 返回值
+        err error       // 记录 fn 返回的 error
+
+        // These fields are read and written with the singleflight
+        // mutex held before the WaitGroup is done, and are read but
+        // not written after the WaitGroup is done.
+        dups  int             // 记录从缓存中获取 fn 返回值的次数
+        chans []chan<- Result // 提供给 DoChan 方法用于传递 fn 的返回值
+    }
+
+    // Group represents a class of work and forms a namespace in
+    // which units of work can be executed with duplicate suppression.
+    type Group struct {
+        mu sync.Mutex       // protects m
+        m  map[string]*call // lazily initialized
+    }
+
+    // Result holds the results of Do, so they can be passed
+    // on a channel.
+    type Result struct {
+        Val    interface{}
+        Err    error
+        Shared bool
+    }
+
+    func (g *Group) Do(key string, fn func() (interface{}, error)) (v interface{}, err error, shared bool) {
+        g.mu.Lock() // 加锁，保证并发安全
+        if g.m == nil {
+            g.m = make(map[string]*call) // 延迟初始化 m
+        }
+        if c, ok := g.m[key]; ok { // 如果 key 已经在 map 中，即非第一个请求会进入到这个代码块
+            c.dups++
+            g.mu.Unlock()
+            c.wg.Wait()
+
+            if e, ok := c.err.(*panicError); ok {
+                panic(e)
+            } else if c.err == errGoexit {
+                runtime.Goexit()
+            }
+            return c.val, c.err, true
+        }
+        c := new(call) // 当前 key 对应的第一个请求会创建一个 call 对象
+        c.wg.Add(1)
+        g.m[key] = c
+        g.mu.Unlock()
+
+        g.doCall(c, key, fn) // 真正去执行 fn 的方法
+        return c.val, c.err, c.dups > 0
+    }
+
+    //与Do类似，但是不会阻塞结果，开启新的goroutine并返回channel
+    func (g *Group) DoChan(key string, fn func() (interface{}, error)) <-chan Result {
+        ch := make(chan Result, 1) // 构造一个 channel 用于传递 fn 的执行结果
+        g.mu.Lock()                // 加锁，保证并发安全
+        if g.m == nil {
+            g.m = make(map[string]*call) // 延迟初始化 m
+        }
+        if c, ok := g.m[key]; ok { // 如果 key 已经在 map 中
+            c.dups++
+            c.chans = append(c.chans, ch)
+            g.mu.Unlock()
+            return ch
+        }
+        c := &call{chans: []chan<- Result{ch}} // 创建一个 call 对象，并初始化 chans 字段
+        c.wg.Add(1)
+        g.m[key] = c
+        g.mu.Unlock()
+
+        go g.doCall(c, key, fn) // 开启新的 goroutine 来执行 fn
+
+        return ch // 返回 channel 对象
+    }
+
+    func (g *Group) doCall(c *call, key string, fn func() (interface{}, error)) {
+        normalReturn := false // fn 是否正常返回
+        recovered := false    // fn 是否产生 panic
+
+        //第三步骤执行
+        // 使用 double-defer 来区分 panic 或 runtime.Goexit
+        defer func() {
+            // 如果条件成立，则说明给定的函数 fn 内部调用了 runtime.Goexit
+            if !normalReturn && !recovered {
+                c.err = errGoexit
+            }
+
+            g.mu.Lock()
+            defer g.mu.Unlock()
+            c.wg.Done()        // 通知阻塞等待的其他请求可以获取 fn 执行结果了
+            if g.m[key] == c { // fn 执行完成，从 m 中删除 key 记录
+                delete(g.m, key)
+            }
+
+            if e, ok := c.err.(*panicError); ok {
+                if len(c.chans) > 0 {
+                    go panic(e) // 为了防止等待 channel 的 goroutine 被永久阻塞，需要确保这个 panic 无法被 recover
+                    select {}   // 保持当前 goroutine 不退出
+                } else {
+                    panic(e)
+                }
+            } else if c.err == errGoexit {
+                // 当前 goroutine 正在执行 runtime.Goexit 退出流程，这里无需特殊处理
+            } else {
+                // 进入此代码块，说明 fn 正常返回
+                for _, ch := range c.chans {
+                    ch <- Result{c.val, c.err, c.dups > 0}
+                }
+            }
+        }()
+
+
+        //第一步执行，并可以获取error
+        func() {
+            defer func() {
+                if !normalReturn {
+                    if r := recover(); r != nil { // 进入此代码块，说明 fn 触发了 panic
+                        c.err = newPanicError(r)
+                    }
+                }
+            }()
+
+            c.val, c.err = fn()
+            normalReturn = true
+        }()
+
+        //第二步，如果runtime.Goexit，此处不会执行
+        if !normalReturn {
+            recovered = true
+        }
+    }
+
+### context
+    树形结构：Context通过父子关系形成树，取消信号从父节点向下传播。
+    并发安全：cancelCtx通过sync.Mutex和atomic.Value确保线程安全。
+    惰性初始化：done通道在首次调用Done()时创建，避免资源浪费
+
+    type Context interface {
+        Deadline() (deadline time.Time, ok bool) // 返回超时时间（若有）
+        Done() <-chan struct{}                  // 返回一个关闭的通道，用于监听取消信号
+        Err() error                             // 返回取消原因（Canceled或DeadlineExceeded）
+        Value(key interface{}) interface{}      // 获取键关联的值
+    }
+
+#### 空的上下文，作为根节点（如Background和TODO）。    
+    type emptyCtx int
+    func (*emptyCtx) Deadline() (deadline time.Time, ok bool) { return }
+    func (*emptyCtx) Done() <-chan struct{} { return nil } // 无取消信号
+    func (*emptyCtx) Err() error { return nil }
+    func (*emptyCtx) Value(key interface{}) interface{} { return nil }
+
+#### cancelCtx
+    type cancelCtx struct {
+        Context                      // 父Context
+        mu       sync.Mutex          // 保护字段
+        done     atomic.Value        // 懒加载的channel（Done()返回）
+        children map[canceler]struct{} // 子Context集合
+        err      error               // 取消原因（Canceled）
+    }
+    取消传播：调用cancel()时，关闭done通道，递归取消所有子Context。
+    Done()懒加载：首次调用Done()时创建done通道（chan struct{}）。
+    线程安全：通过mu锁保护children和err的修改
+
+#### timerCtx
+    type timerCtx struct {
+        cancelCtx                   // 继承cancelCtx
+        timer   *time.Timer         // 定时器
+        deadline time.Time          // 截止时间
+    }
+
+    自动取消：定时器到期后触发cancel()，错误类型为DeadlineExceeded。
+    手动取消优化：若手动取消早于定时器，则提前停止定时器
+
+#### valueCtx
+    type valueCtx struct {
+        Context                     // 父Context
+        key, val interface{}        // 键值对
+    }
+    func (c *valueCtx) Value(key interface{}) interface{} {
+        if c.key == key { return c.val }
+        return c.Context.Value(key) // 链式向上查找
+    }
+    键值对仅对当前及子Context可见，查找时逐级回溯父节点
