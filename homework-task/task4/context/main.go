@@ -26,7 +26,7 @@ func main() {
 	// 1. 创建根 Context
 	root := context.Background()
 
-	// 2. 派生一个可取消的子 Context（超时 2 秒）
+	// 2. 派生一个可取消的子 Context
 	cancelCtx, cancel := myCtx.WithMyCancel(root)
 
 	// 3. 再派生带值的子 Context
