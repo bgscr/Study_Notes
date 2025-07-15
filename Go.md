@@ -836,6 +836,8 @@
 
 # [第三周](#ThirdWeek)
 ## sync.Pool
+    ![d4b9fe35-ab99-40fc-992f-29068b9076da.png](static\d4b9fe35-ab99-40fc-992f-29068b9076da.png)
+
     type poolLocal struct {
         poolLocalInternal
         //这里为了让每个poolLocal都在独立的CPU  cache lines上，填充满128 的空间的pad
