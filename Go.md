@@ -832,3 +832,140 @@
 
     堆上删除屏障
         被删除的对象，如果自身为灰色或者白色，那么被标记为灰色
+
+
+# [第三周](#ThirdWeek)
+## sync.Pool
+    type poolLocal struct {
+        poolLocalInternal
+        //这里为了让每个poolLocal都在独立的CPU  cache lines上，填充满128 的空间的pad
+        //这样每个P（CPU逻辑核心）访poolLocal不会有交叉的地址空间
+        //因为cache lines一个时刻只能被一个P访问
+        pad [128 - unsafe.Sizeof(poolLocalInternal{})%128]byte
+    }
+
+    type poolLocalInternal struct {
+        private any
+        shared  poolChain
+    }
+
+    type poolChain struct {
+        //只有当前P，一个生产者会向head进行 push或者pop poolChainElt，无需锁
+        head *poolChainElt
+        //多个消费者，也就是其他P会pop poolChainElt出来，需要原子操作保证顺序
+        tail atomic.Pointer[poolChainElt]
+    }
+
+    type poolChainElt struct {
+        poolDequeue
+        next, prev atomic.Pointer[poolChainElt]
+    }
+
+
+    //原子锁控制生产者从head push或pop数据，消费者从tail pop数据
+    type poolDequeue struct {
+        //32位表示head index，另外32位表tail index
+        headTail atomic.Uint64
+        vals []eface
+    }
+
+    //这是 Go 在底层表示空接口 interface{} 所用的结构体。
+    type eface struct {
+        typ, val unsafe.Pointer
+    }
+
+
+    func (p *Pool) Put(x interface{}) {	
+        if x == nil {
+            return
+        }
+
+        // 将当前的 P 和当前groutine绑定，因为goroutine可能会被抢占，被运行到别的P上恢复运行
+        // 实际操作是将当前线程（M）锁定到处理器（P）上
+        l, _ := p.pin()
+
+        // private有位置直接赋值在此处
+        if l.private == nil {
+            l.private = x
+            x = nil
+        }
+
+        // private没有位置，则向pushHead push
+        if x != nil {
+            l.shared.pushHead(x)
+        }
+
+        // 使P和p-local pool解绑
+        runtime_procUnpin()
+    }
+
+    func (p *Pool) Get() interface{} {
+        
+        l, pid := p.pin()
+
+        
+        x := l.private
+        l.private = nil
+
+        // 如果private没有拿到数据，从localpool的shared获取头数据
+        if x == nil {
+            x, _ = l.shared.popHead()
+
+            // 没有获取到则从其他P上获取的localpool的tail pop数据
+            if x == nil {
+                x = p.getSlow(pid)
+            }
+        }
+        runtime_procUnpin()
+
+        // If the object is still not there, create a new object from the factory function
+        if x == nil && p.New != nil {
+            x = p.New()
+        }
+        return x
+    }
+
+    //从其他localpool上pop tail数据
+    for i := 0; i <int(size); i++ {
+        l := indexLocal(locals, (pid+i+1)%int(size))
+        if x, _ := l.shared.popTail(); x != nil {
+            return x
+        }
+    }
+
+### Victim Pool，防止pool被GC一下子清理掉所有缓存的对象，至少需要经过 2 个 GC 周期才会被完全移除。
+    package sync
+
+	var (
+		allPoolsMu Mutex
+
+		// allPools is the set of pools that have non-empty primary
+		// caches. Protected by either 1) allPoolsMu and pinning or 2)
+		// STW.
+		allPools []*Pool
+
+		// oldPools is the set of pools that may have non-empty victim
+		// caches. Protected by STW.
+		oldPools []*Pool
+	)
+
+	func poolCleanup() {
+		// Drop victim caches from all pools.
+		for _, p := range oldPools {
+			p.victim = nil
+			p.victimSize = 0
+		}
+
+		// Move primary cache to victim cache.
+		for _, p := range allPools {
+			p.victim = p.local
+			p.victimSize = p.localSize
+			p.local = nil
+			p.localSize = 0
+		}
+
+		// The pools with non-empty primary caches now have non-empty
+		// victim caches and no pools have primary caches.
+		oldPools, allPools = allPools, nil
+	}
+
