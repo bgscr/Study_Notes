@@ -971,3 +971,23 @@
 		oldPools, allPools = allPools, nil
 	}
 
+## 泛型
+    1.
+    func IFF[T any](yes bool, a, b T) T {
+        if yes {
+            return a
+        }
+        return b
+    }
+    result := IFF(true, 10, 0) // 返回10
+
+    2.
+    type MySlice[T constraints.Float] []T
+    
+	var s MySlice[float32] = []float32{2.3, 2.4}
+	for _, v := range s {
+		fmt.Println(v)
+	}
+
+    除了any外，还可以使用constraints.Integer或者constraints.Number约束类型范围
+
