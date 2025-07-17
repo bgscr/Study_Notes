@@ -9,4 +9,4 @@
 - [Gorm笔记](https://github.com/bgscr/Study_Notes/blob/main/Gorm.md)
 - [Go推荐框架结构](https://github.com/bgscr/Study_Notes/blob/main/GoArchitecture.md)
 
-- [Go pprof](https://github.com/bgscr/Study_Notes/blob/main/Go%20fpprof.md)
+- [Go pprof](https://github.com/bgscr/Study_Notes/blob/main/Go%20pprof.md)
