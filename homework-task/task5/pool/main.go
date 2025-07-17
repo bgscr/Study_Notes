@@ -22,7 +22,6 @@ var gopherPool = sync.Pool{
 }
 
 func main() {
-	r := make(chan int, 0)
 	g := gopherPool.Get().(*Gopher)
 	fmt.Println("首次从 pool 里获取：", g.Name)
 
