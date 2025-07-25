@@ -1,3 +1,120 @@
+# 源码   
+   ### 初始化支持的命令
+   
+   func init() {
+      // Initialize the CLI app and start Geth
+      app.Action = geth
+      app.Commands = []*cli.Command{
+         // See chaincmd.go:
+         initCommand,
+         importCommand,
+         exportCommand,
+         importHistoryCommand,
+         exportHistoryCommand,
+         importPreimagesCommand,
+         removedbCommand,
+         dumpCommand,
+         dumpGenesisCommand,
+         pruneHistoryCommand,
+         downloadEraCommand,
+         // See accountcmd.go:
+         accountCommand,
+         walletCommand,
+         // See consolecmd.go:
+         consoleCommand,
+         attachCommand,
+         javascriptCommand,
+         // See misccmd.go:
+         versionCommand,
+         versionCheckCommand,
+         licenseCommand,
+         // See config.go
+         dumpConfigCommand,
+         // see dbcmd.go
+         dbCommand,
+         // See cmd/utils/flags_legacy.go
+         utils.ShowDeprecated,
+         // See snapshot.go
+         snapshotCommand,
+         // See verkle.go
+         verkleCommand,
+      }
+      if logTestCommand != nil {
+         app.Commands = append(app.Commands, logTestCommand)
+      }
+      sort.Sort(cli.CommandsByName(app.Commands))
+
+      app.Flags = slices.Concat(
+         nodeFlags,
+         rpcFlags,
+         consoleFlags,
+         debug.Flags,
+         metricsFlags,
+      )
+      flags.AutoEnvVars(app.Flags, "GETH")
+
+      app.Before = func(ctx *cli.Context) error {
+         maxprocs.Set() // Automatically set GOMAXPROCS to match Linux container CPU quota.
+         flags.MigrateGlobalFlags(ctx)
+         if err := debug.Setup(ctx); err != nil {
+            return err
+         }
+         flags.CheckEnvVars(ctx, app.Flags, "GETH")
+         return nil
+      }
+      app.After = func(ctx *cli.Context) error {
+         debug.Exit()
+         prompt.Stdin.Close() // Resets terminal mode.
+         return nil
+      }
+   }
+
+   ### 不输入子命令的时候，执行的Action， 所以会默认全节点
+
+	// geth is the main entry point into the system if no special subcommand is run.
+	// It creates a default node based on the command line arguments and runs it in
+	// blocking mode, waiting for it to be shut down.
+	func geth(ctx *cli.Context) error {
+		if args := ctx.Args().Slice(); len(args) > 0 {
+			return fmt.Errorf("invalid command: %q", args[0])
+		}
+
+		prepare(ctx)
+		stack := makeFullNode(ctx)
+		defer stack.Close()
+
+		startNode(ctx, stack, false)
+		stack.Wait()
+		return nil
+	}
+   
+
+   ### 这个函数主要是通过配置文件和flag来生成整个系统的运行配置。
+
+    // makeConfigNode loads geth configuration and creates a blank node instance.
+    func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
+
+      cfg := loadBaseConfig(ctx)
+      stack, err := node.New(&cfg.Node)
+      if err != nil {
+         utils.Fatalf("Failed to create the protocol stack: %v", err)
+      }
+      // Node doesn't by default populate account manager backends
+      if err := setAccountManagerBackends(stack.Config(), stack.AccountManager(), stack.KeyStoreDir()); err != nil {
+         utils.Fatalf("Failed to set account manager backends: %v", err)
+      }
+      utils.SetEthConfig(ctx, stack, &cfg.Eth)
+      if ctx.IsSet(utils.EthStatsURLFlag.Name) {
+         cfg.Ethstats.URL = ctx.String(utils.EthStatsURLFlag.Name)
+      }
+      applyMetricConfig(ctx, &cfg)
+
+      return stack, cfg
+    }
+   
+
+
+
 # chaincmd.go
 
 ### 命令列表
