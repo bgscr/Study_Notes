@@ -1,9 +1,11 @@
 # 源码   
    ### 初始化支持的命令
-   
-   func init() {
+
+    func init() {
+
       // Initialize the CLI app and start Geth
       app.Action = geth
+
       app.Commands = []*cli.Command{
          // See chaincmd.go:
          initCommand,
