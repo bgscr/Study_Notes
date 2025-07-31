@@ -9,7 +9,16 @@
 # 生成代码
 ### 生成api go代码，和配置
     这个语句在windows的cmd或者powershell，似乎只能单个文件执行，例如user.api,而不能使用*.api
-    goctl api go -api user.api -dir ./  --style=goZero
+    goctl api go -api user.api -dir ../  --style=goZero
+
+    etc：静态配置文件目录
+    demo.go：程序启动入口文件
+    internal：单个服务内部文件，其可见范围仅限当前服务
+    config：静态配置文件对应的结构体声明目录
+    handler：handler 目录，可选，一般 http 服务会有这一层做路由管理，handler 为固定后缀
+    logic：业务目录，所有业务编码文件都存放在这个目录下面，logic 为固定后缀
+    svc：依赖注入目录，所有 logic 层需要用到的依赖都要在这里进行显式注入
+    types：结构体存放目录
 
 ### 生成Dockerfile
     goctl docker -go user.go
