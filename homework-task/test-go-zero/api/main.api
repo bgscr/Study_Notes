@@ -1,0 +1,10 @@
+syntax = "v1"
+
+info (
+	title:  "博客系统"
+	desc:   "使用go-zero"
+	author: "jayce"
+)
+
+import "./users.api"
+import "./posts.api"
