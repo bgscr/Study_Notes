@@ -37,9 +37,9 @@ type PostInfoResp struct {
 }
 
 type RegisterUserInfoReq struct {
-	UsernName string `json:"userName" validate:"required"`
+	UsernName string `json:"userName" validate:"required,min=6"`
 	Password  string `json:"password" validate:"required"`
-	Email     string `json:"email" validate:"required,email"`
+	Email     string `json:"email" validate:"email"`
 }
 
 type RegisterUserInfoResp struct {
