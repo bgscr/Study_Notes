@@ -1,0 +1,56 @@
+syntax = "proto3";
+package posts;
+option go_package = "./posts";
+
+
+// ========== Posts Service ==========
+message PostInfoReq {
+  string title = 1 ;
+  string content = 2 ;
+}
+
+message PostInfoResp {
+  bool flag = 1;
+  string msg = 2 ;
+}
+
+message SinglePostInfoReq {
+  uint64 id = 1 ;
+}
+
+message SinglePostInfoResp {
+  uint64 id = 1 ;
+  string title = 2 ;
+  string content = 3 ;
+  uint64 user_id = 4 ;
+  string comment_status = 5 ;
+}
+
+message PageReq {
+  uint64 page = 1 ;
+  uint64 page_size = 2 ;
+}
+
+message PageResp {
+  uint64 current_page = 1 ;
+  uint64 page_size = 2 ;
+  uint64 total = 3 ;
+  uint64 total_pages = 4 ;
+}
+
+message SelectPostInfoResp {
+  PageResp page_info = 1 ;
+  repeated SinglePostInfoResp data = 2 ;
+}
+
+service PostService {
+  rpc CreatePost(PostInfoReq) returns (PostInfoResp);
+
+  rpc GetPost(SinglePostInfoReq) returns (SinglePostInfoResp);
+
+  rpc ListPosts(PageReq) returns (SelectPostInfoResp);
+
+  rpc UpdatePost(PostInfoReq) returns (PostInfoResp);
+
+  rpc DeletePost(PostInfoReq) returns (PostInfoResp);
+}

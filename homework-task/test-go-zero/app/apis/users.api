@@ -1,0 +1,37 @@
+syntax = "v1"
+
+type RegisterUserInfoReq {
+	UsernName string `json:"userName" validate:"required,min=6"`
+	Password  string `json:"password" validate:"required"`
+	Email     string `json:"email" validate:"email"`
+}
+
+type RegisterUserInfoResp {
+	Flag bool   `json:"flag"`
+	Msg  string `json:"msg"`
+}
+
+type LoginUserInfoReq {
+	UsernName string `json:"userName"`
+	Password  string `json:"password"`
+}
+
+type LoginUserInfoResp {
+	Flag  bool   `json:"flag"`
+	Msg string `json:"Msg"`
+	Token string `json:"token"`
+}
+
+@server (
+	group:   login
+	timeout: 60s
+)
+// 定义一个名称为 user 的服务
+service blog {
+	@handler register
+	post /user/register (RegisterUserInfoReq) returns (RegisterUserInfoResp)
+
+	@handler login
+	post /user/login (LoginUserInfoReq) returns (LoginUserInfoResp)
+}
+

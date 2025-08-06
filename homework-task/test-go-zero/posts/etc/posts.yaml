@@ -1,0 +1,7 @@
+Name: posts.rpc
+ListenOn: 127.0.0.1:8081
+Etcd:
+  Hosts:
+  - 127.0.0.1:2379
+  Key: posts.rpc
+Mode: dev

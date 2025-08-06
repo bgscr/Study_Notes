@@ -1,0 +1,23 @@
+Name: blog
+Host: 0.0.0.0
+Port: 8888
+Salt: yhuQvauMkUpA5uv5CEwW6pHQ88d3xGTD
+UserRPC:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2379
+    Key: users.rpc
+PostRPC:
+  Etcd:
+    Hosts:
+      - 127.0.0.1:2379
+    Key: posts.rpc
+Auth:
+  AccessSecret: 5cyncZuJ58np2T5GCJbNCDmd6hxPZVzE
+  AccessExpire: 86400
+MySQLConf:
+  Host: localhost
+  Port: 3306
+  User: root
+  Password: "123456"
+  Database: go_test

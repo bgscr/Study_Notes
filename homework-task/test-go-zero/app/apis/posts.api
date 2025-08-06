@@ -1,0 +1,66 @@
+syntax = "v1"
+
+type PostInfoReq {
+	Title   string `json:"title" validate:"required"`
+	Content string `json:"content" validate:"required"`
+}
+
+type PostInfoResp {
+	Flag bool   `json:"flag"`
+	Msg  string `json:"msg"`
+}
+
+type SinglePostInfoReq {
+	Id uint64 `path:"id"`
+}
+
+type SinglePostInfoResp {
+	Id            uint64 `json:"id"`
+	Title         string `json:"title"`
+	Content       string `json:"content"`
+	UserId        uint64 `json:"userId"`
+	CommentStatus string `json:"commentStatus"`
+}
+
+type PageReq{
+	Page     uint64 `form:"page,default=1"`      // 默认第1页
+	PageSize uint64 `form:"pageSize,default=10"` // 默认每页10条
+}
+
+type PageResp{
+	CurrentPage uint64 `json:"currentPage"` // 当前页码
+	PageSize    uint64 `json:"pageSize"`    // 每页数量
+	Total       uint64 `json:"total"`       // 总记录数
+	TotalPages  uint64 `json:"totalPages"`  // 总页数
+}
+
+type SelectPostInfoResp{	
+	PageResp
+	Data	[]SinglePostInfoResp 	`json:"data"`
+}
+
+
+
+@server (
+	group:   post
+	timeout: 60s
+	jwt:     Auth
+)
+// 定义一个名称为 blog 的服务
+service blog {
+	@handler create
+	post /post (PostInfoReq) returns (PostInfoResp)
+
+	@handler single
+	get /post/:id (SinglePostInfoReq) returns (SinglePostInfoResp)
+
+	@handler select
+	get /post (PageReq) returns (SelectPostInfoResp)
+
+	@handler update
+	put /post (PostInfoReq) returns (PostInfoResp)
+
+	@handler delete
+	delete /post (PostInfoReq) returns (PostInfoResp)
+}
+
