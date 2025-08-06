@@ -27,6 +27,10 @@
 
 ### 生成rpc代码
     goctl rpc protoc user-rpc/pb/user.proto --go_out=./ --go-grpc_out=./  --zrpc_out=./ --style=goZero 
+    
+    如果proto文件中使用了import "google/api/annotations.proto"; 那么需要将googleapis的google和protobuf的src/google放置到GOPATH的src地址下，比执行：
+    goctl rpc protoc ./posts.proto --go_out=./ --go-grpc_out=./ --zrpc_out=./ --style=goZero -I . -I "$env:GOPATH\src"
+
 
 ### 生成 Model代码
     goctl model mysql datasource -url="${username}:${passwd}@tcp(${host}:${port})/${dbname}" -table="${tables}"  -dir="${modeldir}" -cache=true --style=goZero
