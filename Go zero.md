@@ -71,3 +71,15 @@ service usercenter {
 
 
 ```
+
+
+# MapReduce
+    MapReduce：主函数，接收generate（生成数据）、mapper（处理数据）、reducer（聚合数据）三个参数。
+    Map/MapVoid：仅执行generate和mapper，无reducer。
+    Finish/FinishVoid：处理固定数量的任务，支持并行和错误中断 
+
+    | 函数 | 流程阶段 | 返回值 | 核心用途 |
+    | -------           | -------                       | -------       |
+    | MapReduce         | generate → mapper → reducer   | 有            | 完整的数据并行处理与聚合
+    | Map/MapVoid       | generate → mapper             | 有/无         | 仅生成并处理数据，无需聚合
+    | Finish/FinishVoid | 并行执行固定任务（无generate）   | 有/无         | 并发执行独立任务，无数据依赖
