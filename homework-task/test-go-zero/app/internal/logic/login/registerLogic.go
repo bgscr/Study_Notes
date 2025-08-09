@@ -1,10 +1,9 @@
 package login
 
 import (
+	"blog-api/internal/svc"
+	"blog-api/internal/types"
 	"context"
-
-	"testGoZero/app/internal/svc"
-	"testGoZero/app/internal/types"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )

@@ -1,12 +1,14 @@
 Name: posts.rpc
-ListenOn: 127.0.0.1:8081
+ListenOn: 0.0.0.0:8081
 Etcd:
   Hosts:
-  - 127.0.0.1:2379
+    - etcd1:2379
+    - etcd2:2379
+    - etcd3:2379
   Key: posts.rpc
 Mode: dev
 Redis:
-  Host: 120.26.251.225:7379  # Redis 地址
+  Host: redis:6379  # Redis 地址
   Pass: "fd2c3815884948a08109c51bc4f5d0a6"
   Type: node
   Key: posts.rpc

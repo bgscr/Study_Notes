@@ -6,10 +6,9 @@ package server
 
 import (
 	"context"
-
-	"testGoZero/posts/internal/logic"
-	"testGoZero/posts/internal/svc"
-	"testGoZero/posts/posts"
+	"rpc/posts/internal/logic"
+	"rpc/posts/internal/svc"
+	"rpc/posts/posts"
 )
 
 type PostServiceServer struct {

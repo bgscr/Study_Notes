@@ -3,11 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-
-	"testGoZero/posts/internal/config"
-	"testGoZero/posts/internal/server"
-	"testGoZero/posts/internal/svc"
-	"testGoZero/posts/posts"
+	"rpc/posts/internal/config"
+	"rpc/posts/internal/server"
+	"rpc/posts/internal/svc"
+	"rpc/posts/posts"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/service"

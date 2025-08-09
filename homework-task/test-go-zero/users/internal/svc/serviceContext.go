@@ -1,6 +1,6 @@
 package svc
 
-import "testGoZero/users/internal/config"
+import "rpc/users/internal/config"
 
 type ServiceContext struct {
 	Config config.Config

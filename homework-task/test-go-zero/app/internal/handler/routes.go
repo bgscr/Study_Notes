@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	login "testGoZero/app/internal/handler/login"
-	post "testGoZero/app/internal/handler/post"
-	"testGoZero/app/internal/svc"
+	login "blog-api/internal/handler/login"
+	post "blog-api/internal/handler/post"
+	"blog-api/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
 )

@@ -6,10 +6,9 @@ package server
 
 import (
 	"context"
-
-	"testGoZero/users/internal/logic"
-	"testGoZero/users/internal/svc"
-	"testGoZero/users/users"
+	"rpc/users/internal/logic"
+	"rpc/users/internal/svc"
+	"rpc/users/users"
 )
 
 type UserServiceServer struct {

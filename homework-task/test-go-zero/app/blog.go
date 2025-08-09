@@ -1,12 +1,11 @@
 package main
 
 import (
+	"blog-api/internal/config"
+	"blog-api/internal/handler"
+	"blog-api/internal/svc"
 	"flag"
 	"fmt"
-
-	"testGoZero/app/internal/config"
-	"testGoZero/app/internal/handler"
-	"testGoZero/app/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"

@@ -1,12 +1,12 @@
 package post
 
 import (
+	"blog-api/internal/logic/post"
+	"blog-api/internal/svc"
+	"blog-api/internal/types"
 	"net/http"
 
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"testGoZero/app/internal/logic/post"
-	"testGoZero/app/internal/svc"
-	"testGoZero/app/internal/types"
 )
 
 func CreateHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {

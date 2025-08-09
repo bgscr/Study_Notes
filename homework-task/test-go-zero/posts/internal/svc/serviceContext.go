@@ -1,7 +1,7 @@
 package svc
 
 import (
-	"testGoZero/posts/internal/config"
+	"rpc/posts/internal/config"
 
 	"github.com/zeromicro/go-zero/core/stores/redis"
 )

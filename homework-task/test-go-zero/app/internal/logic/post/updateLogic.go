@@ -3,8 +3,8 @@ package post
 import (
 	"context"
 
-	"testGoZero/app/internal/svc"
-	"testGoZero/app/internal/types"
+	"blog-api/internal/svc"
+	"blog-api/internal/types"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )

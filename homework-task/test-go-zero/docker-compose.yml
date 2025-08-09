@@ -1,0 +1,125 @@
+version: "3"
+
+services:
+  # etcd 1
+  etcd1:
+    image: quay.io/coreos/etcd:v3.5.0
+    container_name: etcd1
+    command: >
+      etcd --name etcd1
+      --initial-advertise-peer-urls http://etcd1:2380
+      --listen-peer-urls http://0.0.0.0:2380
+      --listen-client-urls http://0.0.0.0:2379
+      --advertise-client-urls http://etcd1:2379
+      --initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      --initial-cluster-state new
+    ports:
+      - "2379:2379"
+
+  # etcd 2
+  etcd2:
+    image: quay.io/coreos/etcd:v3.5.0
+    container_name: etcd2
+    command: >
+      etcd --name etcd2
+      --initial-advertise-peer-urls http://etcd2:2380
+      --listen-peer-urls http://0.0.0.0:2380
+      --listen-client-urls http://0.0.0.0:2379
+      --advertise-client-urls http://etcd2:2379
+      --initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      --initial-cluster-state new
+
+  # etcd 3
+  etcd3:
+    image: quay.io/coreos/etcd:v3.5.0
+    container_name: etcd3
+    command: >
+      etcd --name etcd3
+      --initial-advertise-peer-urls http://etcd3:2380
+      --listen-peer-urls http://0.0.0.0:2380
+      --listen-client-urls http://0.0.0.0:2379
+      --advertise-client-urls http://etcd3:2379
+      --initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      --initial-cluster-state new
+
+  # etcd Web UI
+  etcd-manage:
+    image: evildecay/etcdkeeper
+    container_name: etcd-manage
+    ports:
+      - "8080:8080"
+    depends_on:
+      - etcd1
+
+  # MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: go_test
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  # Redis
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+
+  # blog-api
+  blog-api:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    container_name: blog-api
+    ports:
+      - "8888:8888"
+    depends_on:
+      - etcd1
+      - mysql
+      - posts-rpc
+      - users-rpc
+    environment:
+      ETCD_ADDR: etcd1:2379
+      MYSQL_HOST: mysql
+
+  # posts.rpc
+  posts-rpc:
+    build:
+      context: .
+      dockerfile: posts/Dockerfile
+    container_name: posts-rpc
+    ports:
+      - "8081:8081"
+    depends_on:
+      - etcd1
+      - mysql
+      - redis
+    environment:
+      ETCD_ADDR: etcd1:2379
+      MYSQL_HOST: mysql
+
+  # users.rpc
+  users-rpc:
+    build:
+      context: .
+      dockerfile: users/Dockerfile
+    container_name: users-rpc
+    ports:
+      - "8082:8082"
+    depends_on:
+      - etcd1
+      - mysql
+      - redis
+    environment:
+      ETCD_ADDR: etcd1:2379
+      MYSQL_HOST: mysql
+
+volumes:
+  mysql-data:

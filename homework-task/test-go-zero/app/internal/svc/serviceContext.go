@@ -1,9 +1,9 @@
 package svc
 
 import (
-	"testGoZero/app/internal/config"
-	"testGoZero/posts/postservice"
-	"testGoZero/users/userservice"
+	"blog-api/internal/config"
+	"rpc/posts/postservice"
+	"rpc/users/userservice"
 
 	"github.com/zeromicro/go-zero/zrpc"
 )

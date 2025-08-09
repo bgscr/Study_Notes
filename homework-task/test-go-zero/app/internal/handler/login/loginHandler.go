@@ -1,12 +1,12 @@
 package login
 
 import (
+	"blog-api/internal/logic/login"
+	"blog-api/internal/svc"
+	"blog-api/internal/types"
 	"net/http"
 
 	"github.com/zeromicro/go-zero/rest/httpx"
-	"testGoZero/app/internal/logic/login"
-	"testGoZero/app/internal/svc"
-	"testGoZero/app/internal/types"
 )
 
 func LoginHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
