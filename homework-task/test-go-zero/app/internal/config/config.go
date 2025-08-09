@@ -17,12 +17,12 @@ type Config struct {
 }
 
 type MySQLConf struct {
-	Host     string `json:",omitempty"`
-	Port     int    `json:",omitempty"`
-	User     string `json:",omitempty"`
-	Password string `json:",omitempty"`
-	Database string `json:",omitempty"`
-	Gorm     GormConf
+	Host     string   `json:",omitempty"`
+	Port     int      `json:",omitempty"`
+	User     string   `json:",omitempty"`
+	Password string   `json:",omitempty"`
+	Database string   `json:",omitempty"`
+	Gorm     GormConf `json:",omitempty"`
 }
 
 type GormConf struct {

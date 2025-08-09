@@ -27,7 +27,9 @@ func NewSingleLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SingleLogi
 func (l *SingleLogic) Single(req *types.SinglePostInfoReq) (resp *types.SinglePostInfoResp, err error) {
 	// todo: add your logic here and delete this line
 
-	rpcResp, err := l.svcCtx.PostRPC.GetPost(l.ctx, &posts.SinglePostInfoReq{})
+	rpcResp, err := l.svcCtx.PostRPC.GetPost(l.ctx, &posts.SinglePostInfoReq{
+		Id: req.Id,
+	})
 
 	return &types.SinglePostInfoResp{
 		Id:            rpcResp.Id,

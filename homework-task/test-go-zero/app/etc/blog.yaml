@@ -2,16 +2,23 @@ Name: blog
 Host: 0.0.0.0
 Port: 8888
 Salt: yhuQvauMkUpA5uv5CEwW6pHQ88d3xGTD
+Timeout: 10000
 UserRPC:
   Etcd:
     Hosts:
       - 127.0.0.1:2379
+      - 127.0.0.1:3379
+      - 127.0.0.1:4379
     Key: users.rpc
+  Timeout: 10000
 PostRPC:
   Etcd:
     Hosts:
       - 127.0.0.1:2379
+      - 127.0.0.1:3379
+      - 127.0.0.1:4379
     Key: posts.rpc
+  Timeout: 10000
 Auth:
   AccessSecret: 5cyncZuJ58np2T5GCJbNCDmd6hxPZVzE
   AccessExpire: 86400
@@ -21,3 +28,6 @@ MySQLConf:
   User: root
   Password: "123456"
   Database: go_test
+  Gorm:
+    TablePrefix:
+    SingularTable: false
