@@ -22,6 +22,24 @@
 
 ### 生成Dockerfile
     goctl docker -go user.go
+
+    #构建镜像并创建启动容器，跟踪容器的日志并保持运行状态，直到你手动 Ctrl+C 停止，或者容器退出
+    docker-compose up --build 
+
+    #会构建镜像并启动容器，但命令本身会立刻退出，容器会继续后台运行。
+    docker-compose up -d --build
+
+    # 只构建镜像，不启动容器
+    docker-compose build
+
+    # 单独启动容器
+    docker-compose start blog-api posts.rpc users.rpc
+
+    # 停止容器
+    docker-compose stop blog-api
+    
+    # 构建并创建容器，但不启动
+    docker-compose up --build --no-start
 ### 生成K8S 部署文件
     goctl kube deploy -name redis -namespace adhoc -image redis:6-alpine -o redis.yaml -port 6379
 
