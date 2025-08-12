@@ -21,6 +21,10 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
+const (
+	privateKeyHex = "private key hex"
+)
+
 func main() {
 	client, err := ethclient.Dial("https://eth-sepolia.g.alchemy.com/v2/IYvnOjyIUkrmjNsCRU8XR")
 	if err != nil {
@@ -83,7 +87,7 @@ func main() {
 		return
 	}
 
-	privateKey, err := crypto.HexToECDSA("6f7c629d3469c434d68a80c8485329808678c6d09b77f389b4314fb3a2a0e902")
+	privateKey, err := crypto.HexToECDSA(privateKeyHex)
 	if err != nil {
 		log.Fatalf("解析私钥失败: %v", err)
 	}
@@ -326,7 +330,7 @@ func callContract(client *ethclient.Client, background *context.Context, storeCo
 	copy(value[:], []byte("中文测试value"))
 
 	// 初始化交易opt实例
-	privateKey, _ := crypto.HexToECDSA("6f7c629d3469c434d68a80c8485329808678c6d09b77f389b4314fb3a2a0e902")
+	privateKey, _ := crypto.HexToECDSA(privateKeyHex)
 	chainID, err := client.ChainID(*background)
 	if err != nil {
 		log.Fatal(err)
@@ -365,7 +369,7 @@ func callContract(client *ethclient.Client, background *context.Context, storeCo
 func deployContract(client *ethclient.Client, background *context.Context, estimatedGas uint64) (common.Address, *contract.Contract) {
 	fmt.Println("部署合约")
 
-	privateKey, _ := crypto.HexToECDSA("6f7c629d3469c434d68a80c8485329808678c6d09b77f389b4314fb3a2a0e902")
+	privateKey, _ := crypto.HexToECDSA(privateKeyHex)
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
