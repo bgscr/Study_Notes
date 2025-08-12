@@ -17,3 +17,4 @@
 
 - [Go zero](https://github.com/bgscr/Study_Notes/blob/main/Go%20zero.md)
 
+- [Go ethclient](https://github.com/bgscr/Study_Notes/blob/main/Go-ethclient.md)
