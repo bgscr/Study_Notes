@@ -1,4 +1,4 @@
-# 深入解析以太坊三大代币标准：ERC20、ERC721与ERC1155 (附代码学习总结)
+# 深入解析以太坊三大代币标准：ERC20、ERC721与ERC1155 (附代码实现与底层原理分析)
 
 ## 引言：什么是ERC？
 
@@ -192,7 +192,285 @@ event URI(string value, uint256 indexed id);
 | **Gas 效率** | 中等 | 低 (单笔操作昂贵) | **高 (批量操作极省Gas)** |
 | **合约模型** | 1个合约 : 1种代币 | 1个合约 : 1个NFT系列 | **1个合约 : N种代币** |
 
+## 五、协议自定义实现示例代码
+
+以下是三个标准的简化版实现，旨在展示其核心数据结构和逻辑。**注意：这些代码仅为教学目的，省略了许多安全检查和完整接口，请勿直接用于生产环境。**
+
+### 5.1 简化的 ERC20 实现
+
+这个实现展示了如何使用一个 `mapping` 来追踪每个地址的余额。
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract SimpleERC20 {
+    // --- 状态变量 ---
+    string public name;
+    string public symbol;
+    uint8 public decimals = 18;
+    uint256 public totalSupply;
+
+    // 核心数据结构：地址到余额的映射
+    mapping(address => uint256) private _balances;
+    // 授权额度映射: owner => spender => amount
+    mapping(address => mapping(address => uint256)) private _allowances;
+
+    // --- 事件 ---
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    // --- 构造函数 ---
+    constructor(string memory name_, string memory symbol_, uint256 initialSupply) {
+        name = name_;
+        symbol = symbol_;
+        // 铸造初始供应量给合约部署者
+        _mint(msg.sender, initialSupply * (10**uint256(decimals)));
+    }
+
+    // --- 核心函数 ---
+    function balanceOf(address account) public view returns (uint256) {
+        return _balances[account];
+    }
+
+    function transfer(address to, uint256 amount) public returns (bool) {
+        address owner = msg.sender;
+        _transfer(owner, to, amount);
+        return true;
+    }
+    
+    function approve(address spender, uint256 amount) public returns (bool) {
+        _approve(msg.sender, spender, amount);
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) public returns (bool) {
+        uint256 currentAllowance = _allowances[from][msg.sender];
+        require(currentAllowance >= amount, "ERC20: transfer amount exceeds allowance");
+        
+        _transfer(from, to, amount);
+        _approve(from, msg.sender, currentAllowance - amount); // 减去用掉的额度
+        return true;
+    }
+
+    // --- 内部函数 ---
+    function _transfer(address from, address to, uint256 amount) internal {
+        require(to != address(0), "ERC20: transfer to the zero address");
+        uint256 fromBalance = _balances[from];
+        require(fromBalance >= amount, "ERC20: transfer amount exceeds balance");
+
+        _balances[from] = fromBalance - amount;
+        _balances[to] += amount;
+
+        emit Transfer(from, to, amount);
+    }
+    
+    function _approve(address owner, address spender, uint256 amount) internal {
+        require(owner != address(0), "ERC20: approve from the zero address");
+        require(spender != address(0), "ERC20: approve to the zero address");
+        _allowances[owner][spender] = amount;
+        emit Approval(owner, spender, amount);
+    }
+
+    function _mint(address account, uint256 amount) internal {
+        require(account != address(0), "ERC20: mint to the zero address");
+        totalSupply += amount;
+        _balances[account] += amount;
+        emit Transfer(address(0), account, amount);
+    }
+}
+```
+
+### 5.2 简化的 ERC721 实现
+
+这个实现展示了如何使用 `_owners` 映射来追踪每个 `tokenId` 的所有者。
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract SimpleERC721 {
+    // --- 状态变量 ---
+    string public name;
+    string public symbol;
+
+    // 核心数据结构 1: tokenId 到所有者的映射
+    mapping(uint256 => address) private _owners;
+    // 核心数据结构 2: 地址到持有NFT数量的映射
+    mapping(address => uint256) private _balances;
+    
+    // tokenId 计数器
+    uint256 private _tokenIdCounter;
+
+    // --- 事件 ---
+    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
+
+    // --- 构造函数 ---
+    constructor(string memory name_, string memory symbol_) {
+        name = name_;
+        symbol = symbol_;
+    }
+
+    // --- 核心函数 ---
+    function ownerOf(uint256 tokenId) public view returns (address) {
+        address owner = _owners[tokenId];
+        require(owner != address(0), "ERC721: invalid token ID");
+        return owner;
+    }
+    
+    function balanceOf(address owner) public view returns (uint256) {
+        require(owner != address(0), "ERC721: address zero is not a valid owner");
+        return _balances[owner];
+    }
+    
+    // 公开的铸造函数
+    function safeMint(address to) public {
+        uint256 tokenId = _tokenIdCounter;
+        _tokenIdCounter++;
+        _mint(to, tokenId);
+    }
+
+    // --- 内部函数 ---
+    function _mint(address to, uint256 tokenId) internal {
+        require(to != address(0), "ERC721: mint to the zero address");
+        require(_owners[tokenId] == address(0), "ERC721: token already minted");
+
+        _balances[to] += 1;
+        _owners[tokenId] = to;
+
+        emit Transfer(address(0), to, tokenId);
+    }
+
+    function _transfer(address from, address to, uint256 tokenId) internal {
+        require(ownerOf(tokenId) == from, "ERC721: transfer from incorrect owner");
+        require(to != address(0), "ERC721: transfer to the zero address");
+
+        // 清理授权 (简化版省略)
+
+        _balances[from] -= 1;
+        _balances[to] += 1;
+        _owners[tokenId] = to;
+
+        emit Transfer(from, to, tokenId);
+    }
+}
+```
+
+### 5.3 简化的 ERC1155 实现
+
+这个实现的核心是一个嵌套映射 `_balances`，它同时追踪了 `id` 和 `owner`。
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+contract SimpleERC1155 {
+    // --- 事件 ---
+    event TransferSingle(address indexed operator, address indexed from, address indexed to, uint256 id, uint256 value);
+    event TransferBatch(address indexed operator, address indexed from, address indexed to, uint256[] ids, uint256[] values);
+
+    // 核心数据结构: id => owner => balance
+    mapping(uint256 => mapping(address => uint256)) private _balances;
+
+    // --- 核心函数 ---
+    function balanceOf(address account, uint256 id) public view returns (uint256) {
+        require(account != address(0), "ERC1155: address zero is not a valid owner");
+        return _balances[id][account];
+    }
+
+    function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes memory data) public {
+        require(from == msg.sender, "ERC1155: caller is not owner"); // 简化：未实现授权
+        
+        uint256 fromBalance = _balances[id][from];
+        require(fromBalance >= amount, "ERC1155: insufficient balance for transfer");
+
+        _balances[id][from] = fromBalance - amount;
+        _balances[id][to] += amount;
+
+        emit TransferSingle(msg.sender, from, to, id, amount);
+        
+        // 执行接收者检查 (简化版省略具体实现)
+        _doSafeTransferAcceptanceCheck(msg.sender, from, to, id, amount, data);
+    }
+    
+    function safeBatchTransferFrom(address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) public {
+        require(from == msg.sender, "ERC1155: caller is not owner");
+        require(ids.length == amounts.length, "ERC1155: ids and amounts length mismatch");
+
+        for (uint256 i = 0; i < ids.length; ++i) {
+            uint256 id = ids[i];
+            uint256 amount = amounts[i];
+            
+            uint256 fromBalance = _balances[id][from];
+            require(fromBalance >= amount, "ERC1155: insufficient balance for transfer");
+
+            _balances[id][from] = fromBalance - amount;
+            _balances[id][to] += amount;
+        }
+
+        emit TransferBatch(msg.sender, from, to, ids, amounts);
+        
+        // 执行接收者检查 (简化版省略具体实现)
+    }
+
+    // --- 内部铸造函数 ---
+    function _mint(address to, uint256 id, uint256 amount) internal {
+        require(to != address(0), "ERC1155: mint to the zero address");
+        _balances[id][to] += amount;
+        emit TransferSingle(msg.sender, address(0), to, id, amount);
+    }
+    
+    function _doSafeTransferAcceptanceCheck(address operator, address from, address to, uint256 id, uint256 amount, bytes memory data) internal {
+        // 这一步是为了防止代币被锁死在不兼容的合约中，原理见下文分析
+    }
+}
+```
+
+---
+
+## 六、核心源码底层原理分析
+
+理解这些标准不仅要看接口，更要理解其背后的设计哲学和底层实现原理。
+
+### 6.1 ERC20: `approve` + `transferFrom` 的授权模型
+
+**问题背景**: 在以太坊中，用户（EOA）可以调用合约，但合约不能主动“拿走”用户的代币。如果一个DApp（如Uniswap）需要用你的代币进行交易，它如何获得操作权限？
+
+**解决方案**: 两步授权机制。
+1.  **授权 (Approve)**: 你作为代币所有者，调用代币合约的 `approve` 方法，传入DApp的地址（spender）和你想授权的额度（amount）。这会在代币合约中记录下：`_allowances[你的地址][DApp地址] = 100`。
+2.  **执行 (TransferFrom)**: 当你在DApp上执行一个需要代币的操作时（比如兑换），DApp合约会调用代币合约的 `transferFrom` 方法。`transferFrom` 函数会检查 `_allowances` 映射，确认DApp有足够的额度从你的地址转出代币，然后完成转账。
+
+**底层原理**:
+- **状态存储**: 核心是 `mapping(address => mapping(address => uint256)) internal _allowances` 这个状态变量。它像一个二维表格，精确记录了谁（owner）授权给了谁（spender）多少额度。
+- **权限分离**: 这种模式将“授权”和“执行”两个动作分离。用户拥有授权的主动权，而DApp则获得了在授权范围内的执行权。这是所有DeFi协议能够安全运作的基石。
+- **安全性**: 这种机制也曾存在安全风险（如re-entrancy in approve），现代实现（如OpenZeppelin）通过 `increaseAllowance` 和 `decreaseAllowance` 来避免此类问题。
+
+### 6.2 ERC721/ERC1155: `safeTransfer` 与接收者钩子 (Receiver Hook)
+
+**问题背景**: ERC20有一个著名缺陷：如果你将代币 `transfer` 到一个无法处理该代币的智能合约地址，这些代币将永久丢失。
+
+**解决方案**: `safeTransferFrom` 引入了接收者钩子机制。
+1.  **检查接收者**: 在转移代币前，`safeTransferFrom` 函数会检查 `to` 地址是否是一个合约地址（通过检查地址的 `code.length > 0`）。
+2.  **调用钩子**: 如果 `to` 是一个合约，函数会尝试调用该合约的 `onERC721Received` (对于ERC721) 或 `onERC1155Received` (对于ERC1155) 函数。
+3.  **验证返回值**: 接收方合约必须实现这个钩子函数，并且该函数必须返回一个特定的`bytes4`类型的“魔数值”（`bytes4(keccak256("onERC721Received(...)"))`）。如果接收方合约没有实现该函数，或者返回值不正确，`safeTransferFrom` 交易就会回滚（revert），从而阻止了代币的转移。
+
+**底层原理**:
+- **合约自省 (Introspection)**: 通过`extcodesize`操作码判断接收地址是否为合约，这是实现此功能的基础。
+- **回调机制 (Callback)**: 这是一种典型的回调模式。代币合约在执行关键操作前，“回调”接收方合约，询问它是否“准备好了”。这赋予了接收方合约“拒绝”接收代币的能力。
+- **强制标准**: ERC721和ERC1155将此作为标准的一部分，强制要求所有希望接收这些代币的合约都必须遵循这个约定，极大地提升了整个生态系统的安全性。
+
+### 6.3 ERC1155: 节省Gas的数据结构与批量操作
+
+**问题背景**: 游戏等场景需要频繁、大量地转移多种道具。使用ERC721，转移100个不同的NFT需要100笔独立的交易，Gas费极高。使用ERC20，管理100种道具需要部署100个合约，成本同样高昂。
+
+**解决方案**: ERC1155的两个核心创新。
+1.  **高效的数据结构**:
+    - 它使用 `mapping(uint256 => mapping(address => uint256)) internal _balances;`
+    - **外层 `mapping
+
+
 ## 最终代码学习总结与选择建议
+---
 
 - **从演进角度看**：`ERC20 -> ERC721 -> ERC1155` 是一个功能不断增强、效率不断优化的演进路径。ERC721解决了ERC20无法表达唯一性的问题，而ERC1155则通过批量处理和多代币合一，解决了ERC20和ERC721在特定场景（尤其是游戏）下的低效率问题。
 
