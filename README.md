@@ -20,5 +20,6 @@
 - [Go ethclient](https://github.com/bgscr/Study_Notes/blob/main/Go-ethclient.md)
 
 - [Solidity](https://github.com/bgscr/Study_Notes/blob/main/Solidity.md)
+- [Learn Solidity](https://github.com/bgscr/Study_Notes/blob/main/Learn%20Solidity%20%E2%80%93%20A%20Handbook%20for%20Smart%20Contract%20Development.md)
 - [hardhat](https://github.com/bgscr/Study_Notes/blob/main/hardhat.md)
 - [ERC](https://github.com/bgscr/Study_Notes/blob/main/ERC.md)
