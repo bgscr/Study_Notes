@@ -23,3 +23,6 @@
 - [Learn Solidity](https://github.com/bgscr/Study_Notes/blob/main/Learn%20Solidity%20%E2%80%93%20A%20Handbook%20for%20Smart%20Contract%20Development.md)
 - [hardhat](https://github.com/bgscr/Study_Notes/blob/main/hardhat.md)
 - [ERC](https://github.com/bgscr/Study_Notes/blob/main/ERC.md)
+
+- [Meme 代币系列教学作业
+](https://github.com/bgscr/Study_Notes/blob/main/homework-task/Meme%20%E4%BB%A3%E5%B8%81%E7%B3%BB%E5%88%97%E6%95%99%E5%AD%A6%E4%BD%9C%E4%B8%9A/MyShibToken.sol)
